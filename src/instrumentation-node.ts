@@ -6,6 +6,12 @@
  * and emit spurious "not supported in Edge Runtime" warnings.
  */
 
+if (process.platform === "android") {
+  try {
+    Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+  } catch (e) {}
+}
+
 function getRandomBytes(byteLength: number): Uint8Array {
   const bytes = new Uint8Array(byteLength);
   globalThis.crypto.getRandomValues(bytes);

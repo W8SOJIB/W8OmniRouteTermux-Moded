@@ -144,7 +144,7 @@ function patchInstrumentation(fp) {
   if (!c.includes('registerNodejs') || !c.includes('ensureDbInitialized')) return;
   c = c.replace(
     /(async function registerNodejs\(\)\{)/,
-    '$1try{await ensureDbInitialized();}catch(__w8dbPreInit){console.warn("[w8-init]",__w8dbPreInit?.message);}'
+    '$1if(process.platform===\'android\'){try{Object.defineProperty(process,\'platform\',{value:\'linux\',configurable:true});}catch(e){}}try{await ensureDbInitialized();}catch(__w8dbPreInit){console.warn("[w8-init]",__w8dbPreInit?.message);}'
   );
   fs.writeFileSync(fp, c);
   stats.instrumentation++;
