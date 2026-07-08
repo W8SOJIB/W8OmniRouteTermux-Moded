@@ -9,14 +9,14 @@ echo "╚═══════════════════════�
 echo ""
 
 # ── Step 1: Install requirements ──────────────────────────────────────────
-echo "[1/4] Checking Node.js and Git..."
-pkg install -y nodejs git 2>/dev/null || true
+echo "[1/4] Checking Node.js, Git, and Esbuild..."
+pkg install -y nodejs git esbuild 2>/dev/null || true
 
 # ── Step 2: Install omniroute from npm (pre-built, fast) ──────────────────
 echo "[2/4] Installing OmniRoute from npm (pre-built, ~2 min)..."
 export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-export NODE_OPTIONS="--max-old-space-size=1024"
-npm install -g omniroute@3.8.46 --jobs=1 --no-audit --no-fund
+export NODE_OPTIONS="--max-old-space-size=300"
+npm install -g omniroute@3.8.46 --global-style --ignore-scripts --no-audit --no-fund --omit=dev --prefer-offline
 
 export OMNIROUTE_DIR
 OMNIROUTE_DIR="$(npm root -g)/omniroute"
