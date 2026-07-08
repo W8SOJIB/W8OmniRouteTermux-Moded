@@ -14,7 +14,7 @@ pkg install -y nodejs git 2>/dev/null || true
 
 # ── Step 2: Install omniroute from npm (pre-built, fast) ──────────────────
 echo "[2/4] Installing OmniRoute from npm (pre-built, ~2 min)..."
-npm install -g omniroute@3.8.46
+npm install -g omniroute@3.8.46 --jobs=1 --no-audit --no-fund
 
 export OMNIROUTE_DIR
 OMNIROUTE_DIR="$(npm root -g)/omniroute"
