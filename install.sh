@@ -15,7 +15,7 @@ pkg install -y nodejs git esbuild 2>/dev/null || true
 # ── Step 2: Install omniroute from npm (pre-built, fast) ──────────────────
 echo "[2/4] Installing OmniRoute from npm (pre-built, ~2 min)..."
 export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-export NODE_OPTIONS="--max-old-space-size=300"
+export NODE_OPTIONS="--max-old-space-size=512"
 npm install -g omniroute@3.8.46 --global-style --ignore-scripts --no-audit --no-fund --omit=dev --prefer-offline
 
 export OMNIROUTE_DIR
