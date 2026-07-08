@@ -179,6 +179,20 @@ if (fs.existsSync(INSTR_JS)) {
   }
 }
 
+// Patch serve.mjs to bypass better-sqlite3 compatibility check on Android
+const SERVE_MJS = path.join(BASE, 'bin', 'cli', 'commands', 'serve.mjs');
+if (fs.existsSync(SERVE_MJS)) {
+  let c = fs.readFileSync(SERVE_MJS, 'utf8');
+  if (!c.includes("platform() !== \"android\"")) {
+    c = c.replace(
+      /if\s*\((\s*existsSync\(sqliteBinary\)\s*&&\s*!isNativeBinaryCompatible\(sqliteBinary\)\s*)\)/,
+      "if (platform() !== \"android\" && $1)"
+    );
+    fs.writeFileSync(SERVE_MJS, c);
+    console.log('  ✔ patched serve.mjs to bypass better-sqlite3 check on Android');
+  }
+}
+
 console.log('');
 console.log('  Patch summary:');
 console.log('    playwright fixes   : ' + stats.playwright);
