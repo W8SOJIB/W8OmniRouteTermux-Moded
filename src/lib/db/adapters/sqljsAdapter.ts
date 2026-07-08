@@ -243,7 +243,8 @@ export async function createSqlJsAdapter(filePath: string): Promise<SqliteAdapte
     },
 
     close(): void {
-      gracefulClose();
+      // W8Mod: no-op close to preserve WASM connection
+      // gracefulClose();
     },
 
     get raw() {

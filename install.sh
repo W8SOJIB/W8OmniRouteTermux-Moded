@@ -66,13 +66,33 @@ function patchPlaywright(fp) {
    ───────────────────────────────────────────────────────────────────────── */
 const BIND_HELPER = `
 function __w8bindParams(p){
-  if(!p||Array.isArray(p))return p;
-  const o={};
-  for(const[k,v]of Object.entries(p)){
-    const px=k[0];
-    o[(px==='@'||px==='$'||px===':')?k:'@'+k]=v;
+  function sanitize(v) {
+    if (v === undefined) return null;
+    if (typeof v === "boolean") return v ? 1 : 0;
+    if (v instanceof Date) return v.toISOString();
+    if (typeof v === "object" && v !== null && !(v instanceof Uint8Array) && !Buffer.isBuffer(v)) {
+      try { return JSON.stringify(v); } catch(e) { return String(v); }
+    }
+    return v;
   }
-  return o;
+  if (!p) return p;
+  if (Array.isArray(p)) {
+    if (p.length === 1 && typeof p[0] === "object" && p[0] !== null && !Array.isArray(p[0]) && !(p[0] instanceof Uint8Array) && !Buffer.isBuffer(p[0])) {
+      const o = {};
+      for (const [k, v] of Object.entries(p[0])) {
+        const sv = sanitize(v);
+        const px = k[0];
+        const isNamed = px === '@' || px === '$' || px === ':';
+        o[isNamed ? k : '@' + k] = sv;
+        o[isNamed ? k : '$' + k] = sv;
+        o[isNamed ? k : ':' + k] = sv;
+        o[k] = sv;
+      }
+      return o;
+    }
+    return p.map(sanitize);
+  }
+  return sanitize(p);
 }
 `;
 
@@ -95,43 +115,19 @@ function patchBind(fp, fileName) {
 
   c = BIND_HELPER + c;
   // Only wrap .bind() calls that are immediately followed by a closing paren (named param binding)
-  // This is more targeted than global replacement
   c = c.replace(/\.bind\((\w+)\)/g, '.bind(__w8bindParams($1))');
+  
+  // W8Mod: prevent the adapter from being closed (no-op close)
+  const closeRegex = /close\s*\(\)\s*\{if\s*\(clearInterval\([\w$]+\),[\w$]+&&clearTimeout\([\w$]+\),[\w$]+\)try\{[\w$]+\(\)\}catch(?:\([\w$]+\))?\{\}try\{[\w$]+\.close\(\)\}catch(?:\([\w$]+\))?\{\}[\w$]+=\!1\}/g;
+  c = c.replace(closeRegex, 'close(){}');
+
   fs.writeFileSync(fp, c);
   stats.bind++;
-  console.log('  ✔ sqljsAdapter bind: ' + fileName);
+  console.log('  ✔ sqljsAdapter bind & noop-close: ' + fileName);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   PATCH C: driverFactory close() → no-op for cached sql.js singleton
-   Target: file containing preInitSqlJs + adapter.close
-   Prevents the startup DB probe from destroying the WASM connection.
-   ───────────────────────────────────────────────────────────────────────── */
 function patchDriverFactory(fp) {
-  let c = fs.readFileSync(fp, 'utf8');
-  if (c.includes('__w8noopClose')) { stats.skipped++; return; }
-  if (!c.includes('preInitSqlJs') && !c.includes('SqlJsAdapter')) return;
-
-  // Wrap the adapter close method to be a no-op
-  // Pattern: find where adapter.close is assigned/called after creating the adapter
-  // Insert a no-op wrapper after adapter creation
-  const closeNoOp = `
-// W8Mod: prevent cached sql.js adapter from being closed
-if(typeof __w8noopClose==='undefined'){var __w8noopClose=true;}
-`;
-  // Wrap any .close() call on the adapter with an android guard
-  c = c.replace(
-    /([\w$]+\.close\s*=\s*)(function\s*\([^)]*\)\s*\{)/g,
-    (match, prefix, fn) => {
-      if (c.includes('preInitSqlJs')) {
-        return prefix + 'function(){/* W8Mod: no-op close for sql.js singleton */};//' + fn;
-      }
-      return match;
-    }
-  );
-  fs.writeFileSync(fp, c);
-  stats.driverFactory++;
-  console.log('  ✔ driverFactory close no-op: ' + path.basename(fp));
+  // W8Mod: Obsolete, handled inside patchBind on the sqljsAdapter chunk directly
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -143,7 +139,7 @@ function patchInstrumentation(fp) {
   if (c.includes('__w8dbPreInit')) { stats.skipped++; return; }
   if (!c.includes('registerNodejs') || !c.includes('ensureDbInitialized')) return;
   c = c.replace(
-    /(async function registerNodejs\(\)\{)/,
+    /(async function registerNodejs\s*\(\s*\)\s*\{)/,
     '$1if(process.platform===\'android\'){try{Object.defineProperty(process,\'platform\',{value:\'linux\',configurable:true});}catch(e){}}try{await ensureDbInitialized();}catch(__w8dbPreInit){console.warn("[w8-init]",__w8dbPreInit?.message);}'
   );
   fs.writeFileSync(fp, c);
@@ -168,6 +164,18 @@ function walkDir(dir) {
 
 walkDir(CHUNKS);
 walkDir(SSR);
+
+// Also patch the main instrumentation.js entrypoint directly
+const INSTR_JS = path.join(BASE, 'dist', '.build', 'next', 'server', 'instrumentation.js');
+if (fs.existsSync(INSTR_JS)) {
+  let c = fs.readFileSync(INSTR_JS, 'utf8');
+  if (!c.includes("process.platform==='android'")) {
+    c = "if(process.platform==='android'){try{Object.defineProperty(process,\'platform\',{value:\'linux\',configurable:true});}catch(e){}}\n" + c;
+    fs.writeFileSync(INSTR_JS, c);
+    stats.instrumentation++;
+    console.log('  ✔ patched main instrumentation entrypoint');
+  }
+}
 
 console.log('');
 console.log('  Patch summary:');
