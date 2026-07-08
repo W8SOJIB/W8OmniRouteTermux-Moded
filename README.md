@@ -646,10 +646,16 @@ Auto-trigger by token threshold, flip on the adaptive dial, pin a named profile,
 
 **1) Install & run**
 
-```bash
-npm install -g omniroute
-omniroute
-```
+- **Termux (Android) Quick Install:**
+  ```bash
+  curl -fsSL "https://raw.githubusercontent.com/W8SOJIB/W8OmniRouteTermux-Moded/main/install.sh" | bash
+  ```
+
+- **Global NPM Install (original/un-modded):**
+  ```bash
+  npm install -g omniroute
+  omniroute
+  ```
 
 Dashboard at `http://localhost:20128` · API at `http://localhost:20128/v1`.
 
