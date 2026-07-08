@@ -134,7 +134,7 @@ export async function runServe(opts = {}) {
     "Release",
     "better_sqlite3.node"
   );
-  if (existsSync(sqliteBinary) && !isNativeBinaryCompatible(sqliteBinary)) {
+  if (platform() !== "android" && existsSync(sqliteBinary) && !isNativeBinaryCompatible(sqliteBinary)) {
     console.error(
       "\x1b[31m✖ better-sqlite3 native module is incompatible with this platform.\x1b[0m"
     );
