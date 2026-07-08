@@ -108,6 +108,11 @@ function runNextBuild() {
 }
 
 export function resolveNextBuildBundlerFlag(baseEnv = process.env) {
+  // Android (Termux) does not support Turbopack because native Rust bindings are unavailable.
+  if (process.platform === "android") {
+    console.log("[build-next-isolated] Android/Termux environment detected — forcing Webpack escape hatch");
+    return "--webpack";
+  }
   // Turbopack is the default production bundler (Next 16 stable). Benchmarked on
   // this codebase: 2-3x faster than the single-threaded webpack pass (17min -> 9min
   // on a 32-core box; ~20min -> 7min on ubuntu-latest), artifact validated
